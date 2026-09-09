@@ -39,7 +39,9 @@ class AdvancedErrorHandler implements ErrorHandlerInterface
     ) {
         $this->environment = $environment ?? new Environment();
         $extractor = new CodeSnippetExtractor();
-        $this->prettyHtmlFormatter = $prettyHtmlFormatter ?? new PrettyHtmlFormatter();
+        $this->prettyHtmlFormatter = $prettyHtmlFormatter ?? new PrettyHtmlFormatter(
+            environment: $this->environment->isProduction() ? 'production' : 'development',
+        );
         $this->textFormatter = new TextFormatter(
             $this->environment,
             $extractor,

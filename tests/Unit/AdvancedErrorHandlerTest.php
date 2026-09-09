@@ -61,6 +61,23 @@ describe('AdvancedErrorHandler', function (): void {
             ->and($output)->toContain('prefers-color-scheme: dark');
     });
 
+    it('withholds the error detail from the web page in production', function (): void {
+        $environment = new Environment(
+            sapi: 'apache',
+            envVars: ['MARKO_ENV' => 'production'],
+        );
+        $handler = new AdvancedErrorHandler(environment: $environment);
+        $report = createTestErrorReportForHandler(new Exception('credentials rejected'));
+
+        ob_start();
+        $handler->handle($report);
+        $output = ob_get_clean();
+
+        expect($output)->toContain('An error occurred')
+            ->and($output)->not->toContain('credentials rejected')
+            ->and($output)->not->toContain(__FILE__);
+    });
+
     it('uses TextFormatter for CLI', function (): void {
         $environment = new Environment(
             sapi: 'cli',
