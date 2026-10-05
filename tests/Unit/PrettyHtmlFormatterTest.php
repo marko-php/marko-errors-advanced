@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Marko\Core\Environment\AppEnvironment;
 use Marko\Errors\Contracts\FormatterInterface;
 use Marko\Errors\ErrorReport;
 use Marko\Errors\Severity;
@@ -51,13 +52,13 @@ function createTestRequestCollector(
 
 describe('PrettyHtmlFormatter', function () {
     it('implements FormatterInterface', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
 
         expect($formatter)->toBeInstanceOf(FormatterInterface::class);
     });
 
     it('formats ErrorReport to HTML', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -67,7 +68,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('includes exception message', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $exception = createTestException('Something went wrong');
         $report = ErrorReport::fromThrowable($exception, Severity::Error);
 
@@ -77,7 +78,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('includes file and line number', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -87,7 +88,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('includes code snippet', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -98,7 +99,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('embeds CSS in HTML output', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -108,7 +109,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('produces valid HTML document', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -124,7 +125,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('includes dark mode CSS via media query', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -133,7 +134,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('includes light mode as default', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -145,7 +146,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('uses prefers-color-scheme media query', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -156,7 +157,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('syntax highlighting colors work in both modes', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -173,7 +174,7 @@ describe('PrettyHtmlFormatter', function () {
     });
 
     it('has responsive layout for mobile', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -189,7 +190,7 @@ describe('PrettyHtmlFormatter', function () {
 describe('PrettyHtmlFormatter Environment Handling', function () {
     it('shows full details in development mode', function () {
         $formatter = new PrettyHtmlFormatter(
-            environment: 'development',
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
         );
         $exception = createTestException('Database connection failed');
         $report = ErrorReport::fromThrowable($exception, Severity::Error);
@@ -204,7 +205,7 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
 
     it('shows generic message in production mode', function () {
         $formatter = new PrettyHtmlFormatter(
-            environment: 'production',
+            environment: new AppEnvironment(['APP_ENV' => 'production']),
         );
         $exception = createTestException('Database connection failed: user=admin password=secret123');
         $report = ErrorReport::fromThrowable($exception, Severity::Error);
@@ -218,7 +219,7 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
 
     it('hides stack trace in production', function () {
         $formatter = new PrettyHtmlFormatter(
-            environment: 'production',
+            environment: new AppEnvironment(['APP_ENV' => 'production']),
         );
         $report = createTestErrorReport();
 
@@ -240,7 +241,7 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
 
         $formatter = new PrettyHtmlFormatter(
             requestCollector: $collector,
-            environment: 'production',
+            environment: new AppEnvironment(['APP_ENV' => 'production']),
         );
         $report = createTestErrorReport();
 
@@ -254,10 +255,10 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
 
     it('respects environment configuration', function () {
         $devFormatter = new PrettyHtmlFormatter(
-            environment: 'development',
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
         );
         $prodFormatter = new PrettyHtmlFormatter(
-            environment: 'production',
+            environment: new AppEnvironment(['APP_ENV' => 'production']),
         );
         $exception = createTestException('Sensitive error with DB credentials');
         $report = ErrorReport::fromThrowable($exception, Severity::Error);
@@ -274,11 +275,44 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
             ->and($prodOutput)->not->toContain('Sensitive error with DB credentials')
             ->and($prodOutput)->not->toContain('stack-trace');
     });
+
+    it('treats an unset environment as production', function () {
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment([]),
+        );
+        $report = ErrorReport::fromThrowable(createTestException('Secret detail'), Severity::Error);
+
+        $output = $formatter->format($report);
+
+        expect($output)->toContain('An error occurred')
+            ->and($output)->not->toContain('Secret detail');
+    });
+
+    it('treats non-development environments such as staging as production', function () {
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'staging']),
+        );
+        $report = ErrorReport::fromThrowable(createTestException('Secret detail'), Severity::Error);
+
+        $output = $formatter->format($report);
+
+        expect($output)->toContain('An error occurred')
+            ->and($output)->not->toContain('Secret detail');
+    });
+
+    it('shows details for every development name AppEnvironment accepts', function (string $name) {
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['MARKO_ENV' => $name]),
+        );
+        $report = ErrorReport::fromThrowable(createTestException('Visible detail'), Severity::Error);
+
+        expect($formatter->format($report))->toContain('Visible detail');
+    })->with(['development', 'dev', 'local', 'LOCAL']);
 });
 
 describe('PrettyHtmlFormatter Stack Trace', function () {
     it('formats stack trace entries', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -288,7 +322,7 @@ describe('PrettyHtmlFormatter Stack Trace', function () {
     });
 
     it('shows file and line for each frame', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -300,7 +334,7 @@ describe('PrettyHtmlFormatter Stack Trace', function () {
     });
 
     it('highlights code at each frame', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -311,7 +345,7 @@ describe('PrettyHtmlFormatter Stack Trace', function () {
     });
 
     it('shows function/method name', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -322,7 +356,7 @@ describe('PrettyHtmlFormatter Stack Trace', function () {
     });
 
     it('handles previous exceptions', function () {
-        $formatter = new PrettyHtmlFormatter();
+        $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $previous = new Exception('Original database error');
         $exception = new Exception('Failed to save user', 0, $previous);
         $report = ErrorReport::fromThrowable($exception, Severity::Error);
@@ -336,6 +370,7 @@ describe('PrettyHtmlFormatter Stack Trace', function () {
 
     it('limits context lines per frame', function () {
         $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
             contextLines: 2,
         );
         $report = createTestErrorReport();
@@ -356,7 +391,10 @@ describe('PrettyHtmlFormatter Request Display', function () {
             'uri' => '/api/users/123',
         ]);
 
-        $formatter = new PrettyHtmlFormatter(requestCollector: $collector);
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
+            requestCollector: $collector,
+        );
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -373,7 +411,10 @@ describe('PrettyHtmlFormatter Request Display', function () {
             ],
         ]);
 
-        $formatter = new PrettyHtmlFormatter(requestCollector: $collector);
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
+            requestCollector: $collector,
+        );
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -392,7 +433,10 @@ describe('PrettyHtmlFormatter Request Display', function () {
             ],
         ]);
 
-        $formatter = new PrettyHtmlFormatter(requestCollector: $collector);
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
+            requestCollector: $collector,
+        );
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -411,7 +455,10 @@ describe('PrettyHtmlFormatter Request Display', function () {
             ],
         ]);
 
-        $formatter = new PrettyHtmlFormatter(requestCollector: $collector);
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
+            requestCollector: $collector,
+        );
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -431,7 +478,10 @@ describe('PrettyHtmlFormatter Request Display', function () {
             ],
         ]);
 
-        $formatter = new PrettyHtmlFormatter(requestCollector: $collector);
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
+            requestCollector: $collector,
+        );
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -449,7 +499,10 @@ describe('PrettyHtmlFormatter Request Display', function () {
             ],
         ]);
 
-        $formatter = new PrettyHtmlFormatter(requestCollector: $collector);
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
+            requestCollector: $collector,
+        );
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);
@@ -470,7 +523,10 @@ describe('PrettyHtmlFormatter Request Display', function () {
             'server' => ['php_version' => '8.5.0', 'software' => 'Apache', 'name' => 'localhost'],
         ]);
 
-        $formatter = new PrettyHtmlFormatter(requestCollector: $collector);
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
+            requestCollector: $collector,
+        );
         $report = createTestErrorReport();
 
         $output = $formatter->format($report);

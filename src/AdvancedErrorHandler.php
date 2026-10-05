@@ -41,7 +41,9 @@ class AdvancedErrorHandler implements ErrorHandlerInterface
      * The pretty formatter defaults to one built for the real environment, so
      * production gets the safe generic page. The container cannot autowire
      * the nullable FormatterInterface; module.php binds this class with a
-     * closure that passes the Environment.
+     * closure that passes an Environment backed by the container's shared
+     * AppEnvironment, so this handler and errors-simple agree on which
+     * environments show details.
      */
     public function __construct(
         ?Environment $environment = null,
@@ -50,7 +52,7 @@ class AdvancedErrorHandler implements ErrorHandlerInterface
         $this->environment = $environment ?? new Environment();
         $extractor = new CodeSnippetExtractor();
         $this->prettyHtmlFormatter = $prettyHtmlFormatter ?? new PrettyHtmlFormatter(
-            environment: $this->environment->isProduction() ? 'production' : 'development',
+            environment: $this->environment->appEnvironment(),
         );
         $this->jsonFormatter = new JsonFormatter($this->environment);
         $this->textFormatter = new TextFormatter(

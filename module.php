@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Marko\Core\Container\ContainerInterface;
+use Marko\Core\Environment\AppEnvironment;
 use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\ErrorsAdvanced\AdvancedErrorHandler;
 use Marko\ErrorsSimple\Environment;
@@ -13,11 +14,14 @@ use Marko\ErrorsSimple\Environment;
 return [
     'bindings' => [
         // Closure: the constructor's optional FormatterInterface cannot be
-        // autowired, and the handler must be built with the real Environment
-        // so production renders the safe generic page.
+        // autowired, and the handler must be built with the application's
+        // AppEnvironment so any non-development environment (including an
+        // unset one) renders the safe generic page.
         ErrorHandlerInterface::class => function (ContainerInterface $container): ErrorHandlerInterface {
             return new AdvancedErrorHandler(
-                environment: $container->get(Environment::class),
+                environment: new Environment(
+                    appEnvironment: $container->get(AppEnvironment::class),
+                ),
             );
         },
     ],

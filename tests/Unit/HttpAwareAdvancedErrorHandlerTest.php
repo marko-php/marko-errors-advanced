@@ -6,11 +6,13 @@ namespace Marko\ErrorsAdvanced\Tests\Unit\HttpAware;
 
 use Marko\Core\Container\Container;
 use Marko\Core\Container\PreferenceRegistry;
+use Marko\Core\Environment\AppEnvironment;
 use Marko\Core\Exceptions\HttpExceptionInterface;
 use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\ErrorsAdvanced\AdvancedErrorHandler;
 use Marko\ErrorsAdvanced\Tests\Fixtures\OutputSafeAdvancedErrorHandler;
 use Marko\ErrorsSimple\Environment;
+use ReflectionProperty;
 use RuntimeException;
 use Throwable;
 
@@ -72,6 +74,37 @@ describe('AdvancedErrorHandler container resolution', function (): void {
         }
 
         expect($container->get(ErrorHandlerInterface::class))->toBeInstanceOf(AdvancedErrorHandler::class);
+    });
+
+    it('builds the handler from the container AppEnvironment so it agrees with errors-simple', function (): void {
+        $module = require dirname(__DIR__, 2) . '/module.php';
+        $container = new Container(new PreferenceRegistry());
+        $appEnvironment = new AppEnvironment(['APP_ENV' => 'local']);
+        $container->instance(AppEnvironment::class, $appEnvironment);
+
+        foreach ($module['bindings'] as $abstract => $concrete) {
+            $container->bind($abstract, $concrete);
+        }
+
+        $handler = $container->get(ErrorHandlerInterface::class);
+        $environment = new ReflectionProperty(AdvancedErrorHandler::class, 'environment')->getValue($handler);
+
+        expect($environment)->toBeInstanceOf(Environment::class)
+            ->and($environment->appEnvironment())->toBe($appEnvironment)
+            ->and($environment->isDevelopment())->toBeTrue();
+    });
+
+    it('renders the generic page when the environment is unset', function (): void {
+        $environment = new Environment(
+            sapi: 'fpm-fcgi',
+            server: ['HTTP_ACCEPT' => 'text/html'],
+            appEnvironment: new AppEnvironment([]),
+        );
+
+        [, $output] = handleWithAdvanced($environment, new RuntimeException('SQLSTATE secret'));
+
+        expect($output)->toContain('An error occurred')
+            ->not->toContain('SQLSTATE');
     });
 });
 

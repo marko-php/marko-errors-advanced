@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 namespace Marko\ErrorsAdvanced;
 
+use Marko\Core\Environment\AppEnvironment;
 use Marko\Errors\Contracts\FormatterInterface;
 use Marko\Errors\ErrorReport;
 use Throwable;
 
 class PrettyHtmlFormatter implements FormatterInterface
 {
+    /**
+     * The environment defaults to one that reads the real MARKO_ENV/APP_ENV, so
+     * an unset or non-development environment renders the safe generic page.
+     */
     public function __construct(
         private ?SyntaxHighlighter $highlighter = null,
-        private readonly string $environment = 'development',
+        private readonly AppEnvironment $environment = new AppEnvironment(),
         private ?RequestDataCollector $requestCollector = null,
         private readonly int $contextLines = 3,
     ) {
@@ -30,9 +35,13 @@ class PrettyHtmlFormatter implements FormatterInterface
         return $this->formatDevelopment($report);
     }
 
+    /**
+     * Matches marko/errors-simple: anything that is not a development
+     * environment (development, dev, local) hides error details.
+     */
     private function isProduction(): bool
     {
-        return $this->environment === 'production';
+        return !$this->environment->isDevelopment();
     }
 
     private function formatProduction(): string

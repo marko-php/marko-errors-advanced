@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Marko\Core\Environment\AppEnvironment;
 use Marko\Core\Exceptions\MarkoException;
 use Marko\Errors\ErrorReport;
 use Marko\Errors\Severity;
@@ -68,7 +69,7 @@ function createFormatterWithReport(
     $report = ErrorReport::fromThrowable($exception, Severity::Error);
     $formatter = new PrettyHtmlFormatter(
         requestCollector: createMinimalRequestCollector(),
-        environment: 'development',
+        environment: new AppEnvironment(['APP_ENV' => 'development']),
     );
 
     return [$formatter, $report];
