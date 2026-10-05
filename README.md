@@ -1,6 +1,6 @@
 # marko/errors-advanced
 
-Pretty error pages with syntax-highlighted code, stack traces, and request details --- so you can diagnose issues at a glance during development.
+Pretty error pages with syntax-highlighted code, stack traces, and request details --- so you can diagnose issues at a glance during development. In production it serves a safe generic page (or `{"message": "Server Error"}` to JSON clients) with status `500`.
 
 ## Installation
 

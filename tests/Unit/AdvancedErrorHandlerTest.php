@@ -7,13 +7,13 @@ use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\Errors\Contracts\FormatterInterface;
 use Marko\Errors\ErrorReport;
 use Marko\Errors\Severity;
-use Marko\ErrorsAdvanced\AdvancedErrorHandler;
+use Marko\ErrorsAdvanced\Tests\Fixtures\OutputSafeAdvancedErrorHandler;
 use Marko\ErrorsSimple\Environment;
 
 /**
  * Testable subclass that exposes internal state and captures non-fatal writes.
  */
-class TestableAdvancedHandler extends AdvancedErrorHandler
+class TestableAdvancedHandler extends OutputSafeAdvancedErrorHandler
 {
     /** @var ErrorReport[] */
     public array $nonFatalReports = [];
@@ -39,7 +39,7 @@ function createTestErrorReportForHandler(
 
 describe('AdvancedErrorHandler', function (): void {
     it('implements ErrorHandlerInterface', function (): void {
-        $handler = new AdvancedErrorHandler();
+        $handler = new OutputSafeAdvancedErrorHandler();
 
         expect($handler)->toBeInstanceOf(ErrorHandlerInterface::class);
     });
@@ -49,7 +49,7 @@ describe('AdvancedErrorHandler', function (): void {
             sapi: 'apache',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new AdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
         $report = createTestErrorReportForHandler();
 
         ob_start();
@@ -66,7 +66,7 @@ describe('AdvancedErrorHandler', function (): void {
             sapi: 'cli',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new AdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
         $report = createTestErrorReportForHandler();
 
         ob_start();
@@ -93,7 +93,7 @@ describe('AdvancedErrorHandler', function (): void {
             sapi: 'apache',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new AdvancedErrorHandler(
+        $handler = new OutputSafeAdvancedErrorHandler(
             environment: $environment,
             prettyHtmlFormatter: $failingFormatter,
         );
@@ -114,7 +114,7 @@ describe('AdvancedErrorHandler', function (): void {
             sapi: 'cli',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new AdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
         $exception = new Exception('Database connection failed');
 
         ob_start();
@@ -142,7 +142,7 @@ describe('AdvancedErrorHandler', function (): void {
             sapi: 'apache',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new AdvancedErrorHandler(
+        $handler = new OutputSafeAdvancedErrorHandler(
             environment: $environment,
             prettyHtmlFormatter: $failingFormatter,
         );

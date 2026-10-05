@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use Marko\Core\Container\Container;
+use Marko\Core\Container\PreferenceRegistry;
 use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\Errors\Contracts\FormatterInterface;
 use Marko\Errors\ErrorReport;
 use Marko\Errors\Severity;
 use Marko\ErrorsAdvanced\AdvancedErrorHandler;
+use Marko\ErrorsAdvanced\Tests\Fixtures\OutputSafeAdvancedErrorHandler;
 use Marko\ErrorsSimple\Environment;
 use Marko\ErrorsSimple\SimpleErrorHandler;
 
@@ -27,7 +30,7 @@ describe('Error Handler Chain Integration', function () {
             sapi: 'cli',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new AdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
 
         ob_start();
         $handler->handle($report);
@@ -55,7 +58,7 @@ describe('Error Handler Chain Integration', function () {
             envVars: ['MARKO_ENV' => 'development'],
         );
 
-        $handler = new AdvancedErrorHandler(
+        $handler = new OutputSafeAdvancedErrorHandler(
             environment: $environment,
             prettyHtmlFormatter: $failingFormatter,
         );
@@ -81,7 +84,7 @@ describe('Error Handler Chain Integration', function () {
             envVars: ['MARKO_ENV' => 'development'],
         );
 
-        $handler = new AdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
 
         $report = ErrorReport::fromThrowable(
             new Exception('CLI environment test'),
@@ -106,7 +109,7 @@ describe('Error Handler Chain Integration', function () {
             envVars: ['MARKO_ENV' => 'development'],
         );
 
-        $handler = new AdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
 
         $report = ErrorReport::fromThrowable(
             new Exception('Web environment test'),
@@ -130,13 +133,14 @@ describe('Error Handler Chain Integration', function () {
 
         // Bindings map interface to implementation
         expect($config['bindings'])->toHaveKey(ErrorHandlerInterface::class)
-            ->and($config['bindings'][ErrorHandlerInterface::class])->toBe(AdvancedErrorHandler::class)
+            ->and(($config['bindings'][ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+            ->toBeInstanceOf(AdvancedErrorHandler::class)
             ->and($config['boot'])->toBeCallable();
 
         // Boot function exists and is callable
 
         // AdvancedErrorHandler implements the interface correctly
-        $handler = new AdvancedErrorHandler();
+        $handler = new OutputSafeAdvancedErrorHandler();
         expect($handler)->toBeInstanceOf(ErrorHandlerInterface::class);
     });
 
@@ -151,15 +155,15 @@ describe('Error Handler Chain Integration', function () {
         // errors-simple binds SimpleErrorHandler
         expect($simpleConfig['bindings'][ErrorHandlerInterface::class])
             ->toBe(SimpleErrorHandler::class)
-            ->and($advancedConfig['bindings'][ErrorHandlerInterface::class])
-            ->toBe(AdvancedErrorHandler::class);
+            ->and(($advancedConfig['bindings'][ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+            ->toBeInstanceOf(AdvancedErrorHandler::class);
 
         // errors-advanced binds AdvancedErrorHandler (should override simple)
 
         // Both handlers implement the same interface
         $environment = new Environment();
         $simpleHandler = new SimpleErrorHandler($environment);
-        $advancedHandler = new AdvancedErrorHandler();
+        $advancedHandler = new OutputSafeAdvancedErrorHandler();
 
         expect($simpleHandler)->toBeInstanceOf(ErrorHandlerInterface::class)
             ->and($advancedHandler)->toBeInstanceOf(ErrorHandlerInterface::class);
@@ -171,7 +175,7 @@ describe('Error Handler Chain Integration', function () {
             $advancedConfig['bindings'],
         );
 
-        expect($mergedBindings[ErrorHandlerInterface::class])
-            ->toBe(AdvancedErrorHandler::class);
+        expect(($mergedBindings[ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+            ->toBeInstanceOf(AdvancedErrorHandler::class);
     });
 });

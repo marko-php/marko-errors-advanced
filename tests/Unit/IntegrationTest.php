@@ -2,11 +2,14 @@
 
 declare(strict_types=1);
 
+use Marko\Core\Container\Container;
+use Marko\Core\Container\PreferenceRegistry;
 use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\Errors\Contracts\FormatterInterface;
 use Marko\Errors\ErrorReport;
 use Marko\Errors\Severity;
 use Marko\ErrorsAdvanced\AdvancedErrorHandler;
+use Marko\ErrorsAdvanced\Tests\Fixtures\OutputSafeAdvancedErrorHandler;
 use Marko\ErrorsSimple\CodeSnippetExtractor;
 use Marko\ErrorsSimple\Environment;
 use Marko\ErrorsSimple\Formatters\BasicHtmlFormatter;
@@ -24,7 +27,8 @@ describe('Integration with marko/errors-simple', function () {
         expect($config)->toBeArray()
             ->and($config)->toHaveKey('bindings')
             ->and($config['bindings'])->toHaveKey(ErrorHandlerInterface::class)
-            ->and($config['bindings'][ErrorHandlerInterface::class])->toBe(AdvancedErrorHandler::class);
+            ->and(($config['bindings'][ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+            ->toBeInstanceOf(AdvancedErrorHandler::class);
     });
 
     it('can use BasicHtmlFormatter as fallback', function () {
@@ -43,7 +47,7 @@ describe('Integration with marko/errors-simple', function () {
             envVars: ['MARKO_ENV' => 'development'],
         );
 
-        $handler = new AdvancedErrorHandler(
+        $handler = new OutputSafeAdvancedErrorHandler(
             environment: $environment,
             prettyHtmlFormatter: $failingFormatter,
         );
@@ -70,7 +74,7 @@ describe('Integration with marko/errors-simple', function () {
             envVars: ['MARKO_ENV' => 'development'],
         );
 
-        $handler = new AdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
 
         $report = ErrorReport::fromThrowable(
             new Exception('CLI test error'),
@@ -100,15 +104,15 @@ describe('Integration with marko/errors-simple', function () {
             ->and($advancedConfig['bindings'])->toHaveKey(ErrorHandlerInterface::class)
             ->and($simpleConfig['bindings'][ErrorHandlerInterface::class])
             ->toBe(SimpleErrorHandler::class)
-            ->and($advancedConfig['bindings'][ErrorHandlerInterface::class])
-            ->toBe(AdvancedErrorHandler::class);
+            ->and(($advancedConfig['bindings'][ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+            ->toBeInstanceOf(AdvancedErrorHandler::class);
 
         // errors-simple binds to SimpleErrorHandler
 
         // errors-advanced binds to AdvancedErrorHandler (overrides simple)
 
         // Verify AdvancedErrorHandler is a valid implementation
-        $handler = new AdvancedErrorHandler();
+        $handler = new OutputSafeAdvancedErrorHandler();
         expect($handler)->toBeInstanceOf(ErrorHandlerInterface::class);
     });
 
@@ -123,7 +127,7 @@ describe('Integration with marko/errors-simple', function () {
         // Can instantiate classes from both packages
         $environment = new Environment();
         $simpleHandler = new SimpleErrorHandler($environment);
-        $advancedHandler = new AdvancedErrorHandler();
+        $advancedHandler = new OutputSafeAdvancedErrorHandler();
 
         expect($simpleHandler)->toBeInstanceOf(ErrorHandlerInterface::class)
             ->and($advancedHandler)->toBeInstanceOf(ErrorHandlerInterface::class);
