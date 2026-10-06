@@ -215,15 +215,11 @@ class AdvancedErrorHandler implements ErrorHandlerInterface
             return;
         }
 
+        // Pop our handlers off PHP's handler stacks, which reinstates whatever
+        // was active before register(). Re-setting the previous handler here
+        // would push a duplicate onto the stack.
         restore_exception_handler();
-        if ($this->previousExceptionHandler !== null) {
-            set_exception_handler($this->previousExceptionHandler);
-        }
-
         restore_error_handler();
-        if ($this->previousErrorHandler !== null) {
-            set_error_handler($this->previousErrorHandler);
-        }
 
         $this->registered = false;
     }

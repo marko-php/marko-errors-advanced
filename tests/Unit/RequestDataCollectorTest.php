@@ -188,4 +188,67 @@ describe('RequestDataCollector', function () {
             ->and($data['post']['content'])->toBe('Some content')
             ->and($data['post']['category_id'])->toBe('42');
     });
+
+    it('masks credential-bearing headers beyond Authorization', function () {
+        $collector = new RequestDataCollector(
+            server: [
+                'HTTP_COOKIE' => 'PHPSESSID=live-session-id',
+                'HTTP_X_API_KEY' => 'live-api-key',
+                'HTTP_X_AUTH_TOKEN' => 'live-auth-token',
+                'HTTP_PROXY_AUTHORIZATION' => 'Basic cHJveHk6cGFzcw==',
+                'HTTP_X_CSRF_TOKEN' => 'csrf-value',
+                'HTTP_X_XSRF_TOKEN' => 'xsrf-value',
+                'HTTP_ACCEPT' => 'text/html',
+            ],
+        );
+        $data = $collector->collect();
+
+        expect($data['headers']['Cookie'])->toBe('********')
+            ->and($data['headers']['X-Api-Key'])->toBe('********')
+            ->and($data['headers']['X-Auth-Token'])->toBe('********')
+            ->and($data['headers']['Proxy-Authorization'])->toBe('********')
+            ->and($data['headers']['X-Csrf-Token'])->toBe('********')
+            ->and($data['headers']['X-Xsrf-Token'])->toBe('********')
+            ->and($data['headers']['Accept'])->toBe('text/html');
+    });
+
+    it('masks headers whose names match sensitive field patterns', function () {
+        $collector = new RequestDataCollector(
+            server: [
+                'HTTP_X_SESSION_ID' => 'live-session',
+                'HTTP_X_CUSTOM_SECRET' => 'shh',
+                'HTTP_USER_AGENT' => 'Pest',
+            ],
+        );
+        $data = $collector->collect();
+
+        expect($data['headers']['X-Session-Id'])->toBe('********')
+            ->and($data['headers']['X-Custom-Secret'])->toBe('********')
+            ->and($data['headers']['User-Agent'])->toBe('Pest');
+    });
+
+    it('masks csrf, auth and key fields in request data', function () {
+        $collector = new RequestDataCollector(
+            post: ['_csrf' => 'csrf-value', 'oauth_code' => 'code', 'license_key' => 'abc', 'title' => 'Hello'],
+        );
+        $data = $collector->collect();
+
+        expect($data['post']['_csrf'])->toBe('********')
+            ->and($data['post']['oauth_code'])->toBe('********')
+            ->and($data['post']['license_key'])->toBe('********')
+            ->and($data['post']['title'])->toBe('Hello');
+    });
+
+    it('handles list-style request data with integer keys', function () {
+        $collector = new RequestDataCollector(
+            get: [0 => 'x', 'ids' => [1, 2, 3]],
+            post: ['items' => [['name' => 'a', 'password' => 'p']]],
+        );
+        $data = $collector->collect();
+
+        expect($data['query'][0])->toBe('x')
+            ->and($data['query']['ids'])->toBe([1, 2, 3])
+            ->and($data['post']['items'][0]['name'])->toBe('a')
+            ->and($data['post']['items'][0]['password'])->toBe('********');
+    });
 });

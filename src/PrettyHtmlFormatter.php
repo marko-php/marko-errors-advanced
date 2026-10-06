@@ -286,7 +286,7 @@ HTML;
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<array-key, mixed> $data
      */
     private function formatKeyValueTable(
         array $data,
@@ -299,7 +299,7 @@ HTML;
         $rows = [];
         foreach ($data as $key => $value) {
             $escapedKey = $this->escape((string) $key);
-            $escapedValue = $this->escape((string) $value);
+            $escapedValue = $this->escape($this->stringifyValue($value));
             $rows[] = "<tr><td>$escapedKey</td><td>$escapedValue</td></tr>";
         }
 
@@ -313,6 +313,25 @@ $tableRows
 </table>
 </div>
 HTML;
+    }
+
+    /**
+     * Request data can be nested (?filter[status]=x), so non-scalar values
+     * are rendered as JSON rather than cast to string.
+     */
+    private function stringifyValue(
+        mixed $value,
+    ): string {
+        if (is_scalar($value) || $value === null) {
+            return (string) $value;
+        }
+
+        $json = json_encode(
+            $value,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR,
+        );
+
+        return $json === false ? get_debug_type($value) : $json;
     }
 
     private function formatPreviousException(

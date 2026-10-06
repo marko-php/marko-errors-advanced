@@ -13,10 +13,19 @@ class RequestDataCollector
         'token',
         'secret',
         'session',
+        'csrf',
+        'auth',
+        'key',
     ];
 
     private const array SENSITIVE_HEADERS = [
         'authorization',
+        'cookie',
+        'proxy-authorization',
+        'x-api-key',
+        'x-auth-token',
+        'x-csrf-token',
+        'x-xsrf-token',
     ];
 
     private const string MASK = '********';
@@ -86,14 +95,15 @@ class RequestDataCollector
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @return array<string, mixed>
+     * @param array<array-key, mixed> $data
+     * @return array<array-key, mixed>
      */
     private function maskSensitiveData(
         array $data,
     ): array {
         foreach ($data as $key => $value) {
-            if ($this->isSensitiveField($key)) {
+            // List-style input (?0=x, ?ids[]=1) arrives with integer keys
+            if ($this->isSensitiveField((string) $key)) {
                 $data[$key] = self::MASK;
             } elseif (is_array($value)) {
                 $data[$key] = $this->maskSensitiveData($value);
@@ -106,7 +116,7 @@ class RequestDataCollector
     private function isSensitiveField(
         string $fieldName,
     ): bool {
-        $normalizedName = strtolower(str_replace('_', '', $fieldName));
+        $normalizedName = strtolower(str_replace(['_', '-'], '', $fieldName));
 
         foreach (self::SENSITIVE_FIELD_PATTERNS as $pattern) {
             $normalizedPattern = str_replace('_', '', $pattern);
@@ -126,7 +136,7 @@ class RequestDataCollector
         array $headers,
     ): array {
         foreach ($headers as $key => $value) {
-            if (in_array(strtolower($key), self::SENSITIVE_HEADERS, true)) {
+            if (in_array(strtolower($key), self::SENSITIVE_HEADERS, true) || $this->isSensitiveField($key)) {
                 $headers[$key] = self::MASK;
             }
         }

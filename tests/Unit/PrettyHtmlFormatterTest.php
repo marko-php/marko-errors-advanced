@@ -552,4 +552,43 @@ describe('PrettyHtmlFormatter Request Display', function () {
             // Verify data is in tables for readability
             ->and($output)->toContain('<table class="data-table">');
     });
+
+    it('renders nested request data as JSON instead of casting arrays to string', function () {
+        $collector = createTestRequestCollector([
+            'query' => ['filter' => ['status' => 'active', 'tags' => ['a', 'b']]],
+        ]);
+
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
+            requestCollector: $collector,
+        );
+
+        $output = $formatter->format(createTestErrorReport());
+
+        expect($output)->toContain('<td>filter</td>')
+            ->and($output)->toContain(
+                htmlspecialchars('{"status":"active","tags":["a","b"]}', ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            )
+            ->and($output)->not->toContain('<td>Array</td>');
+    });
+
+    it('renders list-style request data from a real collector without crashing', function () {
+        $collector = new RequestDataCollector(
+            server: ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/?0=x&ids[]=1&ids[]=2'],
+            get: [0 => 'x', 'ids' => [1, 2]],
+            post: [],
+            cookie: [],
+        );
+
+        $formatter = new PrettyHtmlFormatter(
+            environment: new AppEnvironment(['APP_ENV' => 'development']),
+            requestCollector: $collector,
+        );
+
+        $output = $formatter->format(createTestErrorReport());
+
+        expect($output)->toContain('Query Parameters')
+            ->and($output)->toContain('<td>0</td><td>x</td>')
+            ->and($output)->toContain('<td>ids</td><td>[1,2]</td>');
+    });
 });

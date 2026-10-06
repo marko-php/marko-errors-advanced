@@ -221,6 +221,32 @@ describe('AdvancedErrorHandler registration', function (): void {
             ->and($currentErrorHandler)->toBe([$handler, 'handleError']);
     });
 
+    it('does not leave a duplicate of the previous handlers on the stack after unregister()', function (): void {
+        $originalException = set_exception_handler(fn () => null);
+        restore_exception_handler();
+        $originalError = set_error_handler(fn () => true);
+        restore_error_handler();
+
+        set_exception_handler(fn () => null);
+        set_error_handler(fn () => true);
+
+        $handler = new TestableAdvancedHandler(new FakeClock());
+        $handler->register();
+        $handler->unregister();
+
+        // Popping the previous handlers once must reveal the originals again
+        restore_exception_handler();
+        restore_error_handler();
+
+        $currentException = set_exception_handler(fn () => null);
+        restore_exception_handler();
+        $currentError = set_error_handler(fn () => true);
+        restore_error_handler();
+
+        expect($currentException)->toBe($originalException)
+            ->and($currentError)->toBe($originalError);
+    });
+
     it('restores the previously installed handlers when unregister() is called', function (): void {
         $prevException = fn () => null;
         $prevError = fn () => true;
