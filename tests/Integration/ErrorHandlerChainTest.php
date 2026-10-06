@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-use Marko\Core\Container\Container;
-use Marko\Core\Container\PreferenceRegistry;
 use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\Errors\Contracts\FormatterInterface;
 use Marko\Errors\ErrorReport;
 use Marko\Errors\Severity;
 use Marko\ErrorsAdvanced\AdvancedErrorHandler;
+use Marko\ErrorsAdvanced\Tests\Fixtures\ClockedContainer;
 use Marko\ErrorsAdvanced\Tests\Fixtures\OutputSafeAdvancedErrorHandler;
 use Marko\ErrorsSimple\Environment;
 use Marko\ErrorsSimple\SimpleErrorHandler;
+use Marko\Testing\Fake\FakeClock;
 
 describe('Error Handler Chain Integration', function () {
     it('full error handling flow works', function () {
         // Test complete flow: Exception -> ErrorReport -> AdvancedErrorHandler -> Formatter -> Output
         $exception = new RuntimeException('Integration test error', 500);
-        $report = ErrorReport::fromThrowable($exception, Severity::Error);
+        $report = ErrorReport::fromThrowable($exception, Severity::Error, new DateTimeImmutable());
 
         // Verify ErrorReport captures exception data correctly
         expect($report->message)->toBe('Integration test error')
@@ -30,7 +30,7 @@ describe('Error Handler Chain Integration', function () {
             sapi: 'cli',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(clock: new FakeClock(), environment: $environment);
 
         ob_start();
         $handler->handle($report);
@@ -59,6 +59,7 @@ describe('Error Handler Chain Integration', function () {
         );
 
         $handler = new OutputSafeAdvancedErrorHandler(
+            clock: new FakeClock(),
             environment: $environment,
             prettyHtmlFormatter: $failingFormatter,
         );
@@ -66,6 +67,7 @@ describe('Error Handler Chain Integration', function () {
         $report = ErrorReport::fromThrowable(
             new Exception('Fallback test error'),
             Severity::Error,
+            new DateTimeImmutable(),
         );
 
         ob_start();
@@ -84,11 +86,12 @@ describe('Error Handler Chain Integration', function () {
             envVars: ['MARKO_ENV' => 'development'],
         );
 
-        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(clock: new FakeClock(), environment: $environment);
 
         $report = ErrorReport::fromThrowable(
             new Exception('CLI environment test'),
             Severity::Error,
+            new DateTimeImmutable(),
         );
 
         ob_start();
@@ -109,11 +112,12 @@ describe('Error Handler Chain Integration', function () {
             envVars: ['MARKO_ENV' => 'development'],
         );
 
-        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(clock: new FakeClock(), environment: $environment);
 
         $report = ErrorReport::fromThrowable(
             new Exception('Web environment test'),
             Severity::Error,
+            new DateTimeImmutable(),
         );
 
         ob_start();
@@ -133,14 +137,14 @@ describe('Error Handler Chain Integration', function () {
 
         // Bindings map interface to implementation
         expect($config['bindings'])->toHaveKey(ErrorHandlerInterface::class)
-            ->and(($config['bindings'][ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+            ->and(($config['bindings'][ErrorHandlerInterface::class])(ClockedContainer::create()))
             ->toBeInstanceOf(AdvancedErrorHandler::class)
             ->and($config['boot'])->toBeCallable();
 
         // Boot function exists and is callable
 
         // AdvancedErrorHandler implements the interface correctly
-        $handler = new OutputSafeAdvancedErrorHandler();
+        $handler = new OutputSafeAdvancedErrorHandler(new FakeClock());
         expect($handler)->toBeInstanceOf(ErrorHandlerInterface::class);
     });
 
@@ -155,15 +159,15 @@ describe('Error Handler Chain Integration', function () {
         // errors-simple binds SimpleErrorHandler
         expect($simpleConfig['bindings'][ErrorHandlerInterface::class])
             ->toBe(SimpleErrorHandler::class)
-            ->and(($advancedConfig['bindings'][ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+            ->and(($advancedConfig['bindings'][ErrorHandlerInterface::class])(ClockedContainer::create()))
             ->toBeInstanceOf(AdvancedErrorHandler::class);
 
         // errors-advanced binds AdvancedErrorHandler (should override simple)
 
         // Both handlers implement the same interface
         $environment = new Environment();
-        $simpleHandler = new SimpleErrorHandler($environment);
-        $advancedHandler = new OutputSafeAdvancedErrorHandler();
+        $simpleHandler = new SimpleErrorHandler($environment, new FakeClock());
+        $advancedHandler = new OutputSafeAdvancedErrorHandler(new FakeClock());
 
         expect($simpleHandler)->toBeInstanceOf(ErrorHandlerInterface::class)
             ->and($advancedHandler)->toBeInstanceOf(ErrorHandlerInterface::class);
@@ -175,7 +179,7 @@ describe('Error Handler Chain Integration', function () {
             $advancedConfig['bindings'],
         );
 
-        expect(($mergedBindings[ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+        expect(($mergedBindings[ErrorHandlerInterface::class])(ClockedContainer::create()))
             ->toBeInstanceOf(AdvancedErrorHandler::class);
     });
 });

@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-use Marko\Core\Container\Container;
-use Marko\Core\Container\PreferenceRegistry;
 use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\Errors\Contracts\FormatterInterface;
 use Marko\Errors\ErrorReport;
 use Marko\Errors\Severity;
 use Marko\ErrorsAdvanced\AdvancedErrorHandler;
+use Marko\ErrorsAdvanced\Tests\Fixtures\ClockedContainer;
 use Marko\ErrorsAdvanced\Tests\Fixtures\OutputSafeAdvancedErrorHandler;
 use Marko\ErrorsSimple\CodeSnippetExtractor;
 use Marko\ErrorsSimple\Environment;
 use Marko\ErrorsSimple\Formatters\BasicHtmlFormatter;
 use Marko\ErrorsSimple\Formatters\TextFormatter;
 use Marko\ErrorsSimple\SimpleErrorHandler;
+use Marko\Testing\Fake\FakeClock;
 
 describe('Integration with marko/errors-simple', function () {
     it('module.php declares bindings', function () {
@@ -27,7 +27,7 @@ describe('Integration with marko/errors-simple', function () {
         expect($config)->toBeArray()
             ->and($config)->toHaveKey('bindings')
             ->and($config['bindings'])->toHaveKey(ErrorHandlerInterface::class)
-            ->and(($config['bindings'][ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+            ->and(($config['bindings'][ErrorHandlerInterface::class])(ClockedContainer::create()))
             ->toBeInstanceOf(AdvancedErrorHandler::class);
     });
 
@@ -48,6 +48,7 @@ describe('Integration with marko/errors-simple', function () {
         );
 
         $handler = new OutputSafeAdvancedErrorHandler(
+            clock: new FakeClock(),
             environment: $environment,
             prettyHtmlFormatter: $failingFormatter,
         );
@@ -55,6 +56,7 @@ describe('Integration with marko/errors-simple', function () {
         $report = ErrorReport::fromThrowable(
             new Exception('Test error'),
             Severity::Error,
+            new DateTimeImmutable(),
         );
 
         ob_start();
@@ -74,11 +76,12 @@ describe('Integration with marko/errors-simple', function () {
             envVars: ['MARKO_ENV' => 'development'],
         );
 
-        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(clock: new FakeClock(), environment: $environment);
 
         $report = ErrorReport::fromThrowable(
             new Exception('CLI test error'),
             Severity::Error,
+            new DateTimeImmutable(),
         );
 
         ob_start();
@@ -104,7 +107,7 @@ describe('Integration with marko/errors-simple', function () {
             ->and($advancedConfig['bindings'])->toHaveKey(ErrorHandlerInterface::class)
             ->and($simpleConfig['bindings'][ErrorHandlerInterface::class])
             ->toBe(SimpleErrorHandler::class)
-            ->and(($advancedConfig['bindings'][ErrorHandlerInterface::class])(new Container(new PreferenceRegistry())))
+            ->and(($advancedConfig['bindings'][ErrorHandlerInterface::class])(ClockedContainer::create()))
             ->toBeInstanceOf(AdvancedErrorHandler::class);
 
         // errors-simple binds to SimpleErrorHandler
@@ -112,7 +115,7 @@ describe('Integration with marko/errors-simple', function () {
         // errors-advanced binds to AdvancedErrorHandler (overrides simple)
 
         // Verify AdvancedErrorHandler is a valid implementation
-        $handler = new OutputSafeAdvancedErrorHandler();
+        $handler = new OutputSafeAdvancedErrorHandler(new FakeClock());
         expect($handler)->toBeInstanceOf(ErrorHandlerInterface::class);
     });
 
@@ -126,8 +129,8 @@ describe('Integration with marko/errors-simple', function () {
 
         // Can instantiate classes from both packages
         $environment = new Environment();
-        $simpleHandler = new SimpleErrorHandler($environment);
-        $advancedHandler = new OutputSafeAdvancedErrorHandler();
+        $simpleHandler = new SimpleErrorHandler($environment, new FakeClock());
+        $advancedHandler = new OutputSafeAdvancedErrorHandler(new FakeClock());
 
         expect($simpleHandler)->toBeInstanceOf(ErrorHandlerInterface::class)
             ->and($advancedHandler)->toBeInstanceOf(ErrorHandlerInterface::class);
@@ -152,6 +155,7 @@ describe('Integration with marko/errors-simple', function () {
         $report = ErrorReport::fromThrowable(
             new Exception('Coexistence test'),
             Severity::Error,
+            new DateTimeImmutable(),
         );
 
         $textOutput = $textFormatter->format($report);

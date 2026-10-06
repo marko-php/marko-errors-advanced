@@ -15,6 +15,7 @@ use Marko\ErrorsSimple\Formatters\BasicHtmlFormatter;
 use Marko\ErrorsSimple\Formatters\JsonFormatter;
 use Marko\ErrorsSimple\Formatters\TextFormatter;
 use Marko\ErrorsSimple\HttpErrorStatus;
+use Psr\Clock\ClockInterface;
 use Throwable;
 
 class AdvancedErrorHandler implements ErrorHandlerInterface
@@ -46,6 +47,7 @@ class AdvancedErrorHandler implements ErrorHandlerInterface
      * environments show details.
      */
     public function __construct(
+        private readonly ClockInterface $clock,
         ?Environment $environment = null,
         ?FormatterInterface $prettyHtmlFormatter = null,
     ) {
@@ -130,7 +132,7 @@ class AdvancedErrorHandler implements ErrorHandlerInterface
     public function handleException(
         Throwable $exception,
     ): void {
-        $report = ErrorReport::fromThrowable($exception, Severity::Error);
+        $report = ErrorReport::fromThrowable($exception, Severity::Error, $this->clock->now());
         $this->handle($report);
     }
 
@@ -162,7 +164,7 @@ class AdvancedErrorHandler implements ErrorHandlerInterface
         $severity = Severity::fromErrorLevel($level);
 
         if ($severity === Severity::Deprecated || $severity === Severity::Notice) {
-            $report = ErrorReport::fromThrowable($exception, $severity);
+            $report = ErrorReport::fromThrowable($exception, $severity, $this->clock->now());
             $this->handleNonFatal($report);
 
             return true;

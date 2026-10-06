@@ -20,7 +20,7 @@ function createTestErrorReport(
 ): ErrorReport {
     $exception ??= createTestException();
 
-    return ErrorReport::fromThrowable($exception, Severity::Error);
+    return ErrorReport::fromThrowable($exception, Severity::Error, new DateTimeImmutable());
 }
 
 function createTestRequestCollector(
@@ -70,7 +70,7 @@ describe('PrettyHtmlFormatter', function () {
     it('includes exception message', function () {
         $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $exception = createTestException('Something went wrong');
-        $report = ErrorReport::fromThrowable($exception, Severity::Error);
+        $report = ErrorReport::fromThrowable($exception, Severity::Error, new DateTimeImmutable());
 
         $output = $formatter->format($report);
 
@@ -193,7 +193,7 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
             environment: new AppEnvironment(['APP_ENV' => 'development']),
         );
         $exception = createTestException('Database connection failed');
-        $report = ErrorReport::fromThrowable($exception, Severity::Error);
+        $report = ErrorReport::fromThrowable($exception, Severity::Error, new DateTimeImmutable());
 
         $output = $formatter->format($report);
 
@@ -208,7 +208,7 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
             environment: new AppEnvironment(['APP_ENV' => 'production']),
         );
         $exception = createTestException('Database connection failed: user=admin password=secret123');
-        $report = ErrorReport::fromThrowable($exception, Severity::Error);
+        $report = ErrorReport::fromThrowable($exception, Severity::Error, new DateTimeImmutable());
 
         $output = $formatter->format($report);
 
@@ -261,7 +261,7 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
             environment: new AppEnvironment(['APP_ENV' => 'production']),
         );
         $exception = createTestException('Sensitive error with DB credentials');
-        $report = ErrorReport::fromThrowable($exception, Severity::Error);
+        $report = ErrorReport::fromThrowable($exception, Severity::Error, new DateTimeImmutable());
 
         $devOutput = $devFormatter->format($report);
         $prodOutput = $prodFormatter->format($report);
@@ -280,7 +280,7 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
         $formatter = new PrettyHtmlFormatter(
             environment: new AppEnvironment([]),
         );
-        $report = ErrorReport::fromThrowable(createTestException('Secret detail'), Severity::Error);
+        $report = ErrorReport::fromThrowable(createTestException('Secret detail'), Severity::Error, new DateTimeImmutable());
 
         $output = $formatter->format($report);
 
@@ -292,7 +292,7 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
         $formatter = new PrettyHtmlFormatter(
             environment: new AppEnvironment(['APP_ENV' => 'staging']),
         );
-        $report = ErrorReport::fromThrowable(createTestException('Secret detail'), Severity::Error);
+        $report = ErrorReport::fromThrowable(createTestException('Secret detail'), Severity::Error, new DateTimeImmutable());
 
         $output = $formatter->format($report);
 
@@ -304,7 +304,7 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
         $formatter = new PrettyHtmlFormatter(
             environment: new AppEnvironment(['MARKO_ENV' => $name]),
         );
-        $report = ErrorReport::fromThrowable(createTestException('Visible detail'), Severity::Error);
+        $report = ErrorReport::fromThrowable(createTestException('Visible detail'), Severity::Error, new DateTimeImmutable());
 
         expect($formatter->format($report))->toContain('Visible detail');
     })->with(['development', 'dev', 'local', 'LOCAL']);
@@ -359,7 +359,7 @@ describe('PrettyHtmlFormatter Stack Trace', function () {
         $formatter = new PrettyHtmlFormatter(environment: new AppEnvironment(['APP_ENV' => 'development']));
         $previous = new Exception('Original database error');
         $exception = new Exception('Failed to save user', 0, $previous);
-        $report = ErrorReport::fromThrowable($exception, Severity::Error);
+        $report = ErrorReport::fromThrowable($exception, Severity::Error, new DateTimeImmutable());
 
         $output = $formatter->format($report);
 

@@ -9,6 +9,7 @@ use Marko\Errors\ErrorReport;
 use Marko\Errors\Severity;
 use Marko\ErrorsAdvanced\Tests\Fixtures\OutputSafeAdvancedErrorHandler;
 use Marko\ErrorsSimple\Environment;
+use Marko\Testing\Fake\FakeClock;
 
 /**
  * Testable subclass that exposes internal state and captures non-fatal writes.
@@ -34,12 +35,12 @@ function createTestErrorReportForHandler(
 ): ErrorReport {
     $exception ??= new Exception('Test error message');
 
-    return ErrorReport::fromThrowable($exception, Severity::Error);
+    return ErrorReport::fromThrowable($exception, Severity::Error, new DateTimeImmutable());
 }
 
 describe('AdvancedErrorHandler', function (): void {
     it('implements ErrorHandlerInterface', function (): void {
-        $handler = new OutputSafeAdvancedErrorHandler();
+        $handler = new OutputSafeAdvancedErrorHandler(new FakeClock());
 
         expect($handler)->toBeInstanceOf(ErrorHandlerInterface::class);
     });
@@ -49,7 +50,7 @@ describe('AdvancedErrorHandler', function (): void {
             sapi: 'apache',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(clock: new FakeClock(), environment: $environment);
         $report = createTestErrorReportForHandler();
 
         ob_start();
@@ -66,7 +67,7 @@ describe('AdvancedErrorHandler', function (): void {
             sapi: 'cli',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(clock: new FakeClock(), environment: $environment);
         $report = createTestErrorReportForHandler();
 
         ob_start();
@@ -94,6 +95,7 @@ describe('AdvancedErrorHandler', function (): void {
             envVars: ['MARKO_ENV' => 'development'],
         );
         $handler = new OutputSafeAdvancedErrorHandler(
+            clock: new FakeClock(),
             environment: $environment,
             prettyHtmlFormatter: $failingFormatter,
         );
@@ -114,7 +116,7 @@ describe('AdvancedErrorHandler', function (): void {
             sapi: 'cli',
             envVars: ['MARKO_ENV' => 'development'],
         );
-        $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
+        $handler = new OutputSafeAdvancedErrorHandler(clock: new FakeClock(), environment: $environment);
         $exception = new Exception('Database connection failed');
 
         ob_start();
@@ -143,6 +145,7 @@ describe('AdvancedErrorHandler', function (): void {
             envVars: ['MARKO_ENV' => 'development'],
         );
         $handler = new OutputSafeAdvancedErrorHandler(
+            clock: new FakeClock(),
             environment: $environment,
             prettyHtmlFormatter: $failingFormatter,
         );
@@ -203,7 +206,7 @@ describe('AdvancedErrorHandler registration', function (): void {
     });
 
     it('installs an error handler and an exception handler when register() is called', function (): void {
-        $handler = new TestableAdvancedHandler();
+        $handler = new TestableAdvancedHandler(new FakeClock());
         $handler->register();
 
         $currentExceptionHandler = set_exception_handler(fn () => null);
@@ -224,7 +227,7 @@ describe('AdvancedErrorHandler registration', function (): void {
         set_exception_handler($prevException);
         set_error_handler($prevError);
 
-        $handler = new TestableAdvancedHandler();
+        $handler = new TestableAdvancedHandler(new FakeClock());
         $handler->register();
         $handler->unregister();
 
@@ -241,10 +244,44 @@ describe('AdvancedErrorHandler registration', function (): void {
             ->and($currentError)->toBe($prevError);
     });
 
+    it('stamps error reports with the injected clock', function (): void {
+        $clock = new FakeClock('2026-01-01 12:00:00 UTC');
+        $handler = new TestableAdvancedHandler(
+            clock: $clock,
+            environment: new Environment(sapi: 'cli', envVars: ['MARKO_ENV' => 'development']),
+        );
+
+        $originalLevel = error_reporting();
+        error_reporting(E_ALL);
+        $handler->handleError(E_USER_NOTICE, 'Clocked notice', '/test/file.php', 42);
+        error_reporting($originalLevel);
+
+        expect($handler->nonFatalReports[0]->timestamp)->toEqual($clock->now());
+    });
+
+    it('stamps exception reports with the injected clock', function (): void {
+        $clock = new FakeClock('2026-01-01 12:00:00 UTC');
+        $handler = new class ($clock) extends OutputSafeAdvancedErrorHandler
+        {
+            public ?ErrorReport $handled = null;
+
+            public function handle(
+                ErrorReport $report,
+            ): void {
+                $this->handled = $report;
+            }
+        };
+
+        $handler->handleException(new RuntimeException('Clocked exception'));
+
+        expect($handler->handled?->timestamp)->toEqual($clock->now());
+    });
+
     it(
         'does not swallow warnings: handleError() surfaces a non-fatal warning loudly rather than returning true with no side effect',
         function (): void {
             $handler = new TestableAdvancedHandler(
+                clock: new FakeClock(),
                 environment: new Environment(sapi: 'cli', envVars: ['MARKO_ENV' => 'development']),
             );
 
@@ -266,6 +303,7 @@ describe('AdvancedErrorHandler registration', function (): void {
 
     it('surfaces deprecations and notices without halting execution or clearing output buffers', function (): void {
         $handler = new TestableAdvancedHandler(
+            clock: new FakeClock(),
             environment: new Environment(sapi: 'cli', envVars: ['MARKO_ENV' => 'development']),
         );
 
@@ -289,7 +327,7 @@ describe('AdvancedErrorHandler registration', function (): void {
     it(
         'respects error_reporting(): handleError() returns false for a level masked off by the current error_reporting setting',
         function (): void {
-            $handler = new TestableAdvancedHandler();
+            $handler = new TestableAdvancedHandler(new FakeClock());
 
             $originalLevel = error_reporting();
             error_reporting(E_ERROR | E_WARNING);
@@ -303,7 +341,7 @@ describe('AdvancedErrorHandler registration', function (): void {
     );
 
     it('is idempotent: calling register() twice installs handlers only once', function (): void {
-        $handler = new TestableAdvancedHandler();
+        $handler = new TestableAdvancedHandler(new FakeClock());
 
         $handler->register();
 
@@ -324,7 +362,7 @@ describe('AdvancedErrorHandler registration', function (): void {
     it(
         'registers a shutdown handler that surfaces a fatal error captured at shutdown (handleShutdown is idempotent and only acts on fatal error types)',
         function (): void {
-            $handler = new TestableAdvancedHandler();
+            $handler = new TestableAdvancedHandler(new FakeClock());
 
             expect(method_exists($handler, 'handleShutdown'))->toBeTrue();
 
@@ -351,7 +389,7 @@ describe('AdvancedErrorHandler registration', function (): void {
     it(
         'each test restores prior handler state via unregister() so global handlers do not leak across the suite',
         function (): void {
-            $handler = new TestableAdvancedHandler();
+            $handler = new TestableAdvancedHandler(new FakeClock());
 
             $handler->register();
             expect($handler->isRegistered())->toBeTrue();
@@ -368,6 +406,7 @@ describe('AdvancedErrorHandler registration', function (): void {
             $module = require $modulePath;
 
             $handler = new TestableAdvancedHandler(
+                clock: new FakeClock(),
                 environment: new Environment(sapi: 'cli', envVars: ['MARKO_ENV' => 'development']),
             );
 

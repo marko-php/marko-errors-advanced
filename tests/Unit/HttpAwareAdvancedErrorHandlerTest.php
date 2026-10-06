@@ -12,6 +12,8 @@ use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\ErrorsAdvanced\AdvancedErrorHandler;
 use Marko\ErrorsAdvanced\Tests\Fixtures\OutputSafeAdvancedErrorHandler;
 use Marko\ErrorsSimple\Environment;
+use Marko\Testing\Fake\FakeClock;
+use Psr\Clock\ClockInterface;
 use ReflectionProperty;
 use RuntimeException;
 use Throwable;
@@ -55,7 +57,7 @@ function handleWithAdvanced(
     Environment $environment,
     Throwable $throwable,
 ): array {
-    $handler = new OutputSafeAdvancedErrorHandler(environment: $environment);
+    $handler = new OutputSafeAdvancedErrorHandler(clock: new FakeClock(), environment: $environment);
 
     ob_start();
     $handler->handleException($throwable);
@@ -68,6 +70,7 @@ describe('AdvancedErrorHandler container resolution', function (): void {
     it('resolves ErrorHandlerInterface from the module bindings', function (): void {
         $module = require dirname(__DIR__, 2) . '/module.php';
         $container = new Container(new PreferenceRegistry());
+        $container->instance(ClockInterface::class, new FakeClock());
 
         foreach ($module['bindings'] as $abstract => $concrete) {
             $container->bind($abstract, $concrete);
@@ -76,9 +79,25 @@ describe('AdvancedErrorHandler container resolution', function (): void {
         expect($container->get(ErrorHandlerInterface::class))->toBeInstanceOf(AdvancedErrorHandler::class);
     });
 
+    it('builds the handler with the bound clock from the module', function (): void {
+        $module = require dirname(__DIR__, 2) . '/module.php';
+        $container = new Container(new PreferenceRegistry());
+        $clock = new FakeClock('2026-01-01 12:00:00 UTC');
+        $container->instance(ClockInterface::class, $clock);
+
+        foreach ($module['bindings'] as $abstract => $concrete) {
+            $container->bind($abstract, $concrete);
+        }
+
+        $handler = $container->get(ErrorHandlerInterface::class);
+
+        expect(new ReflectionProperty(AdvancedErrorHandler::class, 'clock')->getValue($handler))->toBe($clock);
+    });
+
     it('builds the handler from the container AppEnvironment so it agrees with errors-simple', function (): void {
         $module = require dirname(__DIR__, 2) . '/module.php';
         $container = new Container(new PreferenceRegistry());
+        $container->instance(ClockInterface::class, new FakeClock());
         $appEnvironment = new AppEnvironment(['APP_ENV' => 'local']);
         $container->instance(AppEnvironment::class, $appEnvironment);
 

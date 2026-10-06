@@ -66,7 +66,7 @@ function createFormatterWithReport(
     string $suggestion = '',
 ): array {
     $exception = createMarkoExceptionWith($message, $context, $suggestion);
-    $report = ErrorReport::fromThrowable($exception, Severity::Error);
+    $report = ErrorReport::fromThrowable($exception, Severity::Error, new DateTimeImmutable());
     $formatter = new PrettyHtmlFormatter(
         requestCollector: createMinimalRequestCollector(),
         environment: new AppEnvironment(['APP_ENV' => 'development']),

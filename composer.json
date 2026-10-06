@@ -6,10 +6,12 @@
     "require": {
         "php": ">=8.5",
         "marko/core": "self.version",
+        "marko/clock": "self.version",
         "marko/errors": "self.version",
         "marko/errors-simple": "self.version"
     },
     "require-dev": {
+        "marko/testing": "self.version",
         "pestphp/pest": "^4.0"
     },
     "autoload": {
