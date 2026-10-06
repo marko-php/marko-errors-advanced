@@ -280,7 +280,11 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
         $formatter = new PrettyHtmlFormatter(
             environment: new AppEnvironment([]),
         );
-        $report = ErrorReport::fromThrowable(createTestException('Secret detail'), Severity::Error, new DateTimeImmutable());
+        $report = ErrorReport::fromThrowable(
+            createTestException('Secret detail'),
+            Severity::Error,
+            new DateTimeImmutable(),
+        );
 
         $output = $formatter->format($report);
 
@@ -292,7 +296,11 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
         $formatter = new PrettyHtmlFormatter(
             environment: new AppEnvironment(['APP_ENV' => 'staging']),
         );
-        $report = ErrorReport::fromThrowable(createTestException('Secret detail'), Severity::Error, new DateTimeImmutable());
+        $report = ErrorReport::fromThrowable(
+            createTestException('Secret detail'),
+            Severity::Error,
+            new DateTimeImmutable(),
+        );
 
         $output = $formatter->format($report);
 
@@ -304,7 +312,11 @@ describe('PrettyHtmlFormatter Environment Handling', function () {
         $formatter = new PrettyHtmlFormatter(
             environment: new AppEnvironment(['MARKO_ENV' => $name]),
         );
-        $report = ErrorReport::fromThrowable(createTestException('Visible detail'), Severity::Error, new DateTimeImmutable());
+        $report = ErrorReport::fromThrowable(
+            createTestException('Visible detail'),
+            Severity::Error,
+            new DateTimeImmutable(),
+        );
 
         expect($formatter->format($report))->toContain('Visible detail');
     })->with(['development', 'dev', 'local', 'LOCAL']);
