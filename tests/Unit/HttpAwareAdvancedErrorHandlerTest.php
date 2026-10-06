@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Marko\ErrorsAdvanced\Tests\Unit\HttpAware;
 
 use Marko\Core\Container\Container;
+use Marko\Core\Container\ContainerInterface;
 use Marko\Core\Container\PreferenceRegistry;
 use Marko\Core\Environment\AppEnvironment;
+use Marko\Core\Error\BootstrapErrorHandler;
 use Marko\Core\Exceptions\HttpExceptionInterface;
 use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\ErrorsAdvanced\AdvancedErrorHandler;
@@ -67,6 +69,39 @@ function handleWithAdvanced(
 }
 
 describe('AdvancedErrorHandler container resolution', function (): void {
+    it('replaces the core bootstrap error handler instead of stacking on top of it', function (): void {
+        $module = require dirname(__DIR__, 2) . '/module.php';
+        $peek = static function (): mixed {
+            $current = set_exception_handler(null);
+            restore_exception_handler();
+
+            return $current;
+        };
+        $original = $peek();
+        $moduleHandler = static function (Throwable $throwable): void {};
+        $errorHandler = test()->createStub(ErrorHandlerInterface::class);
+        $errorHandler->method('register')->willReturnCallback(
+            static function () use ($moduleHandler): void {
+                set_exception_handler($moduleHandler);
+            },
+        );
+        $container = new Container(new PreferenceRegistry());
+        $container->instance(ContainerInterface::class, $container);
+        $container->instance(ErrorHandlerInterface::class, $errorHandler);
+        $bootstrapErrorHandler = new BootstrapErrorHandler(new AppEnvironment(['APP_ENV' => 'local']));
+        $container->instance(BootstrapErrorHandler::class, $bootstrapErrorHandler);
+
+        $bootstrapErrorHandler->register();
+        $container->call($module['boot']);
+        $active = $peek();
+        restore_exception_handler();
+        $underneath = $peek();
+
+        expect($active)->toBe($moduleHandler)
+            ->and($underneath)->toBe($original)
+            ->and($bootstrapErrorHandler->isActive())->toBeFalse();
+    });
+
     it('resolves ErrorHandlerInterface from the module bindings', function (): void {
         $module = require dirname(__DIR__, 2) . '/module.php';
         $container = new Container(new PreferenceRegistry());

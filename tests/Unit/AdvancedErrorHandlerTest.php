@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Marko\Core\Container\ContainerInterface;
+use Marko\Core\Error\BootstrapErrorHandler;
 use Marko\Errors\Contracts\ErrorHandlerInterface;
 use Marko\Errors\Contracts\FormatterInterface;
 use Marko\Errors\ErrorReport;
@@ -444,7 +445,7 @@ describe('AdvancedErrorHandler registration', function (): void {
                 }
             };
 
-            ($module['boot'])($container);
+            ($module['boot'])($container, new BootstrapErrorHandler());
 
             expect($handler->isRegistered())->toBeTrue();
 
